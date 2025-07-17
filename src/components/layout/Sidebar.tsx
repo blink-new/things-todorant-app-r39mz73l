@@ -22,9 +22,10 @@ interface SidebarProps {
     upcoming: number
     someday: number
   }
+  onQuickAdd?: () => void
 }
 
-export function Sidebar({ activeView, onViewChange, taskCounts }: SidebarProps) {
+export function Sidebar({ activeView, onViewChange, taskCounts, onQuickAdd }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false)
 
   const menuItems = [
@@ -61,6 +62,7 @@ export function Sidebar({ activeView, onViewChange, taskCounts }: SidebarProps) 
         <Button 
           className="w-full bg-primary hover:bg-primary/90 text-white"
           size={isCollapsed ? "sm" : "default"}
+          onClick={onQuickAdd}
         >
           <Plus className="h-4 w-4" />
           {!isCollapsed && <span className="ml-2">Quick Add</span>}

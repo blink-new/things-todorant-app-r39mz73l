@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react'
 import { blink } from '@/lib/blink'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { TaskList } from '@/components/tasks/TaskList'
+import { TaskEditModal } from '@/components/tasks/TaskEditModal'
 import { TodorantWorkflow } from '@/components/todorant/TodorantWorkflow'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Plus, Search } from 'lucide-react'
 import { Task } from '@/types'
-import { toast } from 'react-hot-toast'
+import { toast } from 'sonner'
+import { Toaster } from '@/components/ui/sonner'
 
 // Mock data for development
 const mockTasks: Task[] = [
@@ -78,6 +80,8 @@ function App() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [newTaskTitle, setNewTaskTitle] = useState('')
+  const [editingTask, setEditingTask] = useState<Task | null>(null)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
 
   useEffect(() => {
     const unsubscribe = blink.auth.onAuthStateChanged((state) => {
@@ -140,8 +144,8 @@ function App() {
   }
 
   const handleEditTask = (task: Task) => {
-    // For now, just show a toast. In a real app, this would open an edit modal
-    toast.success('Edit functionality coming soon!')
+    setEditingTask(task)
+    setIsEditModalOpen(true)
   }
 
   const handleDeleteTask = (taskId: string) => {
@@ -175,6 +179,25 @@ function App() {
         : task
     ))
     toast.success(`Task moved to ${stage} stage!`)
+  }
+
+  const handleSaveTask = (updatedTask: Task) => {
+    if (editingTask) {
+      // Update existing task
+      setTasks(prev => prev.map(task => 
+        task.id === updatedTask.id ? updatedTask : task
+      ))
+      toast.success('Task updated!')
+    } else {
+      // Add new task
+      setTasks(prev => [updatedTask, ...prev])
+      toast.success('Task created!')
+    }
+  }
+
+  const handleCreateNewTask = () => {
+    setEditingTask(null)
+    setIsEditModalOpen(true)
   }
 
   const getViewTitle = () => {
@@ -214,76 +237,91 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
-      <Sidebar
-        activeView={activeView}
-        onViewChange={setActiveView}
-        taskCounts={getTaskCounts()}
-      />
+    <>
+      <div className="min-h-screen bg-gray-50 flex">
+        {/* Sidebar */}
+        <Sidebar
+          activeView={activeView}
+          onViewChange={setActiveView}
+          taskCounts={getTaskCounts()}
+          onQuickAdd={handleCreateNewTask}
+        />
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        {/* Header */}
-        <header className="bg-white border-b border-gray-200 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">{getViewTitle()}</h1>
-              {activeView !== 'todorant' && (
-                <p className="text-gray-600 mt-1">
-                  {getFilteredTasks().length} tasks
-                </p>
-              )}
-            </div>
-            
-            <div className="flex items-center gap-4">
-              {/* Search */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Search tasks..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 w-64"
-                />
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col">
+          {/* Header */}
+          <header className="bg-white border-b border-gray-200 px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">{getViewTitle()}</h1>
+                {activeView !== 'todorant' && (
+                  <p className="text-gray-600 mt-1">
+                    {getFilteredTasks().length} tasks
+                  </p>
+                )}
               </div>
+              
+              <div className="flex items-center gap-4">
+                {/* Search */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Search tasks..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 w-64"
+                  />
+                </div>
 
-              {/* Quick Add */}
-              <div className="flex items-center gap-2">
-                <Input
-                  placeholder="Add a task..."
-                  value={newTaskTitle}
-                  onChange={(e) => setNewTaskTitle(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleAddTask()}
-                  className="w-64"
-                />
-                <Button onClick={handleAddTask} size="sm">
-                  <Plus className="h-4 w-4" />
-                </Button>
+                {/* Quick Add */}
+                <div className="flex items-center gap-2">
+                  <Input
+                    placeholder="Add a task..."
+                    value={newTaskTitle}
+                    onChange={(e) => setNewTaskTitle(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleAddTask()}
+                    className="w-64"
+                  />
+                  <Button onClick={handleAddTask} size="sm">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                  <Button onClick={handleCreateNewTask} variant="outline" size="sm">
+                    New Task
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
-        </header>
+          </header>
 
-        {/* Content */}
-        <main className="flex-1 p-6">
-          {activeView === 'todorant' ? (
-            <TodorantWorkflow
-              tasks={tasks}
-              onMoveTaskToStage={handleMoveTaskToStage}
-            />
-          ) : (
-            <TaskList
-              tasks={getFilteredTasks()}
-              onToggleComplete={handleToggleComplete}
-              onEditTask={handleEditTask}
-              onDeleteTask={handleDeleteTask}
-              emptyMessage={`No tasks in ${activeView}`}
-            />
-          )}
-        </main>
+          {/* Content */}
+          <main className="flex-1 p-6">
+            {activeView === 'todorant' ? (
+              <TodorantWorkflow
+                tasks={tasks}
+                onMoveTaskToStage={handleMoveTaskToStage}
+              />
+            ) : (
+              <TaskList
+                tasks={getFilteredTasks()}
+                onToggleComplete={handleToggleComplete}
+                onEditTask={handleEditTask}
+                onDeleteTask={handleDeleteTask}
+                emptyMessage={`No tasks in ${activeView}`}
+              />
+            )}
+          </main>
+        </div>
       </div>
-    </div>
+      
+      <TaskEditModal
+        task={editingTask}
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        onSave={handleSaveTask}
+      />
+      
+      <Toaster />
+    </>
   )
 }
 
